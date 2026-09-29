@@ -5,32 +5,45 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_ollama import ChatOllama
 
 # Import your custom tools from tools.py
-from tools import fetch_and_load_currenflux_data, export_query_to_excel, DB_PATH
+from tools import (
+    fetch_and_load_currenflux_data,
+    export_query_to_excel,
+    generate_consolidated_spreadsheet,
+    DB_PATH)
 
-# 1. Load initial data (creates currenflux.db)
+tools = [
+    fetch_and_load_currenflux_data,
+    export_query_to_excel,
+    generate_consolidated_spreadsheet, # <--- ADICIONAR AQUI NA LISTA DO AGENTE
+]
+
+# 1. Carrega dados iniciais
 fetch_and_load_currenflux_data.invoke({})
 
-# 2. Database & LLM setup
+# 2. Configuração do Banco de Dados e LLM
 db = SQLDatabase.from_uri(f"sqlite:///{DB_PATH}")
 coder_llm = ChatOllama(model="qwen2.5-coder:3b", temperature=0)
 agent_llm = ChatOllama(model="gemma4:e4b", temperature=0)
 
-# 3. Consolidate tools
+# 3. Consolida TODAS as ferramentas (Toolkit SQL + Suas Ferramentas Customizadas)
 sql_toolkit = SQLDatabaseToolkit(db=db, llm=coder_llm)
-tools = sql_toolkit.get_tools() + [fetch_and_load_currenflux_data, export_query_to_excel]
 
-# 4. Agent prompt and execution
+tools = sql_toolkit.get_tools() + [
+    fetch_and_load_currenflux_data,
+    export_query_to_excel,
+    generate_consolidated_spreadsheet, # <--- GARANTA QUE ESTÁ AQUI
+]
+
+# 4. Prompt do Agente
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "Você é o assistente do CurrenFlux. Use as ferramentas para consultar o banco e gerar planilhas. "
-           "Se o usuário não especificar um nome de arquivo, use 'relatorio_output.xlsx' como padrão."),
+    ("system", "Você é o assistente do CurrenFlux. Sempre use a ferramenta generate_consolidated_spreadsheet para exportar relatórios consolidados."),
     MessagesPlaceholder(variable_name="chat_history", optional=True),
     ("human", "{input}"),
     MessagesPlaceholder(variable_name="agent_scratchpad"),
 ])
 
-# Substituted create_openai_tools_agent with create_tool_calling_agent
 agent = create_tool_calling_agent(agent_llm, tools, prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 if __name__ == "__main__":
-    agent_executor.invoke({"input": "Gere um relatório Excel combinando as tabelas fx_dashboard, cb_rates e trade_data."})
+    agent_executor.invoke({"input": "Gere o relatório consolidado em Excel."})

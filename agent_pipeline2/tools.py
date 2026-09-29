@@ -43,8 +43,7 @@ def fetch_and_load_currenflux_data() -> str:
 
 @tool
 def export_query_to_excel(query_sql: str, file_path: str = "currenflux_report.xlsx") -> str:
-    """Executa uma consulta SQL no CurrenFlux e exporta em Excel.
-    Se file_path não for informado, usa 'currenflux_report.xlsx' como padrão."""
+    """Executa uma consulta SQL no CurrenFlux e exporta em Excel."""
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query(query_sql, conn)
     conn.close()
@@ -53,3 +52,78 @@ def export_query_to_excel(query_sql: str, file_path: str = "currenflux_report.xl
         df.to_excel(writer, sheet_name="CurrenFlux", index=False)
 
     return f"Relatório exportado em: {file_path}"
+
+@tool
+def generate_consolidated_spreadsheet(file_path: str = "currenflux_consolidated.xlsx") -> str:
+    """USE ESTA FERRAMENTA para gerar o relatório consolidado em Excel. 
+    NÃO pergunte o caminho ao usuário; use 'currenflux_consolidated.xlsx' como padrão no diretório atual."""
+    conn = sqlite3.connect(DB_PATH)
+    
+    with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+        # 1. Carrega dados mais recentes de cada fonte
+        fx_df = pd.read_sql_query("SELECT * FROM fx_dashboard ORDER BY data DESC LIMIT 1", conn) if os.path.exists("fx_dashboard.csv") else pd.DataFrame()
+        cb_df = pd.read_sql_query("SELECT * FROM cb_rates", conn)
+        trade_df = pd.read_sql_query("SELECT * FROM trade_data ORDER BY date_updated DESC LIMIT 1", conn)
+
+        # 2. Monta a lista do Resumo Consolidado
+        summary_rows = []
+
+        # Câmbio
+        if not fx_df.empty:
+            for col in ["USDBRL", "EURBRL", "GBPBRL", "CNYBRL", "JPYBRL"]:
+                if col in fx_df.columns:
+                    summary_rows.append({
+                        "Categoria": "Taxa de Câmbio",
+                        "Indicador / Par": col,
+                        "Valor": fx_df[col].iloc[0],
+                        "Data / Referência": fx_df["data"].iloc[0] if "data" in fx_df.columns else ""
+                    })
+
+        # Taxas de Juros dos Bancos Centrais
+        if not cb_df.empty:
+            latest_cb = cb_df.sort_values("date_updated").groupby("central_bank").last().reset_index()
+            for _, row in latest_cb.iterrows():
+                summary_rows.append({
+                    "Categoria": f"Juros ({row.get('central_bank', '')})",
+                    "Indicador / Par": row.get("rate_name", ""),
+                    "Valor": f"{row.get('rate_value', '')}%",
+                    "Data / Referência": row.get("effective_date", row.get("date_updated", ""))
+                })
+
+        # Comércio Exterior
+        if not trade_df.empty:
+            latest_trade = trade_df.iloc[0]
+            ref_period = latest_trade.get("reference_period", "")
+            summary_rows.append({
+                "Categoria": "Comex (Brasil)",
+                "Indicador / Par": "Exportações (US$ Mi)",
+                "Valor": latest_trade.get("exports_usd_millions", ""),
+                "Data / Referência": ref_period
+            })
+            summary_rows.append({
+                "Categoria": "Comex (Brasil)",
+                "Indicador / Par": "Importações (US$ Mi)",
+                "Valor": latest_trade.get("imports_usd_millions", ""),
+                "Data / Referência": ref_period
+            })
+            summary_rows.append({
+                "Categoria": "Comex (Brasil)",
+                "Indicador / Par": "Saldo Comercial (US$ Mi)",
+                "Valor": latest_trade.get("trade_balance_usd_millions", ""),
+                "Data / Referência": ref_period
+            })
+
+        # Escreve a aba principal "Resumo Consolidado"
+        if summary_rows:
+            summary_df = pd.DataFrame(summary_rows)
+            summary_df.to_excel(writer, sheet_name="Resumo Consolidado", index=False)
+
+        # 3. Exporta as abas detalhadas de cada tabela do banco
+        tables = [row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()]
+        for table_name in tables:
+            df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+            sheet_title = table_name.replace("_", " ").title()[:31]
+            df.to_excel(writer, sheet_name=sheet_title, index=False)
+            
+    conn.close()
+    return f"Relatório consolidado gerado com sucesso em: {file_path}"
