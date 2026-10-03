@@ -1,4 +1,6 @@
 date_updated,central_bank,country,rate_name,rate_value,effective_date
-2026-09-27,BCB,BRL,Selic Target,13.75,04/11/2026
-2026-09-27,FED,USD,Fed Funds Rate,3.63,2026-08-01
-2026-09-27,ECB,EUR,Deposit Facility Rate,2.5,2026-09-25
+2026-10-03,FED,USD,Fed Funds Rate,3.75,2026-09-01
+2026-10-03,ECB,EUR,Deposit Facility Rate,2.5,2026-10-02
+2026-10-03,BOJ,JPN,Policy Rate,1.25,2026-09-29
+2026-10-03,PBOC,CHN,7D Reverse Repo,3.0,2026-09-29
+2026-10-03,RBI,IND,Repo Rate,5.25,2026-07-23
