@@ -53,7 +53,7 @@ Resumo Consolidado (Overview Sheet): A unified snapshot table featuring:
 
 Exchange Rates: USD/BRL, EUR/BRL, GBP/BRL, CNY/BRL, JPY/BRL
 
-Central Bank Rates: Selic Target (BCB), Fed Funds Rate (FED), Deposit Facility Rate (ECB)
+Central Bank Rates: Selic Target (BCB), Fed Funds Rate (FED), Deposit Facility Rate (ECB) (Recently added BOJ, PBOC and RBI)
 
 Comex Balance: Exports, Imports, and Trade Balance (in US$ Millions)
 
