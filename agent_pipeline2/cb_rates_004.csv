@@ -1,0 +1,6 @@
+date_updated,central_bank,country,rate_name,rate_value,effective_date
+2026-10-04,FED,USD,Fed Funds Rate,3.75,2026-09-01
+2026-10-04,ECB,EUR,Deposit Facility Rate,2.5,2026-10-02
+2026-10-04,BOJ,JPN,Policy Rate,1.25,2026-09-29
+2026-10-04,PBOC,CHN,7D Reverse Repo,3.0,2026-09-29
+2026-10-04,RBI,IND,Repo Rate,5.25,2026-07-23
