@@ -65,8 +65,7 @@ def generate_consolidated_spreadsheet(file_path: str = "currenflux_consolidated.
         # 1. Carrega dados mais recentes de cada fonte
         fx_df = pd.read_sql_query("SELECT * FROM fx_dashboard ORDER BY data DESC LIMIT 1", conn) if os.path.exists("fx_dashboard.csv") else pd.DataFrame()
         cb_df = pd.read_sql_query("SELECT * FROM cb_rates", conn)
-        trade_df = pd.read_sql_query("SELECT * FROM trade_data ORDER BY date_updated DESC LIMIT 1", conn)
-
+        trade_df = pd.read_sql_query("SELECT rowid AS _rid, * FROM trade_data", conn)
         # 2. Coleta das linhas organizadas por grupos
         groups = []
 
@@ -99,31 +98,31 @@ def generate_consolidated_spreadsheet(file_path: str = "currenflux_consolidated.
                 groups.append(cb_rows)
 
         # Grupo 3: Comércio Exterior
+        # Grupo 3: Comércio Exterior (formato longo: uma linha por país/fluxo)
         if not trade_df.empty:
-            latest_trade = trade_df.iloc[0]
-            ref_period = latest_trade.get("reference_period", "")
-            trade_rows = [
-                {
-                    "Categoria": "Comex (Brasil)",
-                    "Indicador / Par": "Exportações (US$ Mi)",
-                    "Valor": latest_trade.get("exports_usd_millions", ""),
-                    "Data / Referência": ref_period
-                },
-                {
-                    "Categoria": "Comex (Brasil)",
-                    "Indicador / Par": "Importações (US$ Mi)",
-                    "Valor": latest_trade.get("imports_usd_millions", ""),
-                    "Data / Referência": ref_period
-                },
-                {
-                    "Categoria": "Comex (Brasil)",
-                    "Indicador / Par": "Saldo Comercial (US$ Mi)",
-                    "Valor": latest_trade.get("trade_balance_usd_millions", ""),
-                    "Data / Referência": ref_period
-                }
-            ]
-            groups.append(trade_rows)
+            COUNTRY_NAMES = {"BRA": "Brasil", "CHN": "China", "EUR": "Zona do Euro",
+                             "IND": "Índia", "USA": "EUA"}
+            FLOW_ORDER = ["Exportações (US$ Mi)", "Importações (US$ Mi)", "Saldo Comercial (US$ Mi)"]
 
+            # Pega a linha mais recente de cada país/fluxo (o maior rowid)
+            latest = trade_df.sort_values("_rid").groupby(["country", "flow_type"]).last().reset_index()
+
+            trade_rows = []
+            for code, name in COUNTRY_NAMES.items():
+                for flow in FLOW_ORDER:
+                    match = latest[(latest["country"] == code) & (latest["flow_type"] == flow)]
+                    if match.empty:
+                        continue
+                    r = match.iloc[0]
+                    trade_rows.append({
+                        "Categoria": f"Comex ({name})",
+                        "Indicador / Par": flow,
+                        "Valor": r["value_usd_mil"],
+                        "Data / Referência": r["effective_date"]
+                    })
+            if trade_rows:
+                groups.append(trade_rows)
+                
         # 3. Intercala linhas em branco e cabeçalhos entre grupos
         summary_rows = []
         header_row = {"Categoria": "Categoria", "Indicador / Par": "Indicador / Par", "Valor": "Valor", "Data / Referência": "Data / Referência"}
