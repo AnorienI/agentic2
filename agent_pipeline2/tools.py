@@ -100,8 +100,14 @@ def generate_consolidated_spreadsheet(file_path: str = "currenflux_consolidated.
         # Grupo 3: Comércio Exterior
         # Grupo 3: Comércio Exterior (formato longo: uma linha por país/fluxo)
         if not trade_df.empty:
-            COUNTRY_NAMES = {"BRA": "Brasil", "CHN": "China", "EUR": "Zona do Euro",
-                             "IND": "Índia", "USA": "EUA"}
+            COUNTRY_NAMES = {
+    "BRA": "Brasil",
+    "CHN": "China",
+    "EUR": "Zona do Euro",
+    "IND": "Índia",
+    "JPN": "Japão",
+    "USA": "EUA"
+}
             FLOW_ORDER = ["Exportações (US$ Mi)", "Importações (US$ Mi)", "Saldo Comercial (US$ Mi)"]
 
             # Pega a linha mais recente de cada país/fluxo (o maior rowid)
